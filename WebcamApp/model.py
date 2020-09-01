@@ -78,4 +78,4 @@ class Tiramisu :
                    kernel_initializer='he_uniform',
                    kernel_regularizer=l2,
                    data_format='channels_last'
-            ))
+        ))
