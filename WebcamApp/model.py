@@ -77,5 +77,5 @@ class Tiramisu :
                    input_shape=(224,224,3),
                    kernel_initializer='he_uniform',
                    kernel_regularizer=l2,
-                   data_format='channels_last'
-        ))
+                   data_format='channels_last')
+        )
