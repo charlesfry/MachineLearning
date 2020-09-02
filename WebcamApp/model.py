@@ -1,4 +1,4 @@
-# this model received assistance from the Tiramisu model
+# this model received assistance from the original Tiramisu model
 # https://github.com/0bserver07/One-Hundred-Layers-Tiramisu
 
 from  __future__ import absolute_import
