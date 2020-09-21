@@ -34,7 +34,7 @@ class MonsterList :
         """
 
         all_monsters = [
-            Monster_Creator('Fuffmup','Woodlander','None',(100,5),(10,2),(6,1),(14,1.5),(11,.78),(16,3),(19,1)),
+            Monster_Creator('Fuffmup','Rodent','None',(100,5),(10,2),(6,1),(14,1.5),(11,.78),(16,3),(19,1)),
             Monster_Creator('Dib','Lizard','Snake',(80,5),(12,2),(8,1),(22,3),(18,2),(18,1.5),(12,4)),
             Monster_Creator('Valer','Voidcreep', 'MindBender', (80,2), (6, 1), (11, 2.2), (10, 1.5), (22,3), (19,3), (15,3))
         ]

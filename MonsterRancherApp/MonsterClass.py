@@ -56,6 +56,6 @@ class Monster_Creator(Monster) :
 
 
 if __name__ == '__main__' :
-    cr = Monster_Creator('Fuffmup','Woodlander','None',(100,5),(10,2),(6,1),(14,1.5),(11,.78),(16,3),(19,1))
+    cr = Monster_Creator('Fuffmup','Rodent','None',(100,5),(10,2),(6,1),(14,1.5),(11,.78),(16,3),(19,1))
     mon = cr.create_monster(seed=0)
     print(vars(mon))
