@@ -23,7 +23,7 @@ def detect(img) :
     kernel = cv.getStructuringElement(cv.MORPH_RECT,(21,7))
     closed = cv.morphologyEx(thresh,cv.MORPH_CLOSE,kernel)
 
-    # perform erosions and dialations
+    # perform erosions and dilations
     closed = cv.erode(closed,None,iterations=4)
     closed = cv.dilate(closed,None,iterations=4)
 

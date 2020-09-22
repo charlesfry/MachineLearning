@@ -4,8 +4,8 @@ import random
 import os
 import sys
 
-sys.path.append('.')
-from MonsterClass import Monster_Creator
+sys.path.append('../../../GitHub')
+from GitHub.MachineLearning.MonsterRancherApp.MonsterClass import Monster_Creatorv
 
 class MonsterList :
     def __init__(self):
