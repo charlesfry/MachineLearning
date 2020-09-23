@@ -18,7 +18,7 @@ vs = VideoStream(src=0).start()
 time.sleep(2.0)
 
 # open the outfile
-csv = open(args['-output'],'w+')
+csv = open(args['output'],'w+')
 found = set()
 
 # run the stream
