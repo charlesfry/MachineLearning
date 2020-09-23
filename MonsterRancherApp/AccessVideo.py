@@ -14,7 +14,7 @@ args = vars(parser.parse_args())
 
 # initialize video stream and allow the camera to warm up
 print('[INFO] starting video stream...')
-vs = VideoStream(usePiCamera=True).start()
+vs = VideoStream(src=0).start()
 time.sleep(2.0)
 
 # open the outfile
