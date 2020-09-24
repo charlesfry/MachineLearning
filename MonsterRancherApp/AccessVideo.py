@@ -6,6 +6,8 @@ import datetime
 import time
 import cv2 as cv
 
+# we want to add an output path
+
 # construct parser and parse args
 parser = argparse.ArgumentParser()
 default_path = 'barcodes.csv'
