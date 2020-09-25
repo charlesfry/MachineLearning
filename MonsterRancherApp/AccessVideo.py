@@ -50,6 +50,7 @@ while True :
         # if the barcode isnt already in our csv, write the
         # timestamp and barcode to the disk and put it in the set
         if barcode_data not in found :
+            print('Found barcode!')
             csv.write(f'{datetime.datetime.now()}, {barcode_data}')
             csv.flush()
             found.add(barcode_data)
