@@ -42,10 +42,12 @@ def display(img,decoded_objects) :
             cv.line(img,hull[i],hull[(i+1) % n], (255,0,0), 3)
 
     # display results
-    cv.imshow('Results', img)
+    cv.namedWindow('img_window',cv.WINDOW_NORMAL)
+    resized_window = cv.resize(img,(400,400))
+    cv.imshow('Results', resized_window)
     cv.waitKey(0)
 
 if __name__ == '__main__' :
-    img = cv.imread('./input/personbar.jpg')
+    img = cv.imread('./input/butt.jpg')
     decoded_objects = decode(img)
     display(img, decoded_objects)

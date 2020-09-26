@@ -5,6 +5,8 @@ import argparse
 import datetime
 import time
 import cv2 as cv
+import sys
+sys.path.append('../../../../Development')
 
 # we want to add an output path
 
@@ -67,3 +69,6 @@ print('[INFO] cleaning up...')
 csv.close()
 cv.destroyAllWindows()
 vs.stop()
+
+if __name__ == '__main__' :
+    pass
