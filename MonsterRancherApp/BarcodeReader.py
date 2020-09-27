@@ -42,12 +42,26 @@ def display(img,decoded_objects) :
             cv.line(img,hull[i],hull[(i+1) % n], (255,0,0), 3)
 
     # display results
-    cv.namedWindow('img_window',cv.WINDOW_NORMAL)
-    resized_window = cv.resize(img,(400,400))
-    cv.imshow('Results', resized_window)
+    cv.imshow('Results',img)
     cv.waitKey(0)
 
+def ResizeWithAspectRatio(image, width=None, height=None, inter=cv.INTER_AREA):
+    dim = None
+    (h, w) = image.shape[:2]
+
+    if width is None and height is None:
+        return image
+    if width is None:
+        r = height / float(h)
+        dim = (int(w * r), height)
+    else:
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    return cv.resize(image, dim, interpolation=inter)
+
 if __name__ == '__main__' :
-    img = cv.imread('./input/butt.jpg')
+    img = cv.imread('./input/personbar.jpg')
+    img = ResizeWithAspectRatio(img,width=400)
     decoded_objects = decode(img)
     display(img, decoded_objects)
