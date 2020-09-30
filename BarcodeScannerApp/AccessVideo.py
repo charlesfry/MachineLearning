@@ -8,9 +8,6 @@ import cv2 as cv
 import sys
 sys.path.append('../../../../Development')
 
-from PIL import Image
-from pyzbar.pyzbar import ZBarSymbol, decode
-
 # we want to add an output path
 def main() :
     # construct parser and parse args
