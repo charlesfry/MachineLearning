@@ -21,3 +21,16 @@ for (k,v) in most_common :
     i += 1
     if i == 10 : break
     print(f'shape: {k}, count: {v}')
+
+"""
+results: 
+shape: (640, 480), count: 25403
+shape: (640, 427), count: 14596
+shape: (480, 640), count: 8411
+shape: (640, 426), count: 5353
+shape: (500, 375), count: 5208
+shape: (427, 640), count: 4259
+shape: (640, 428), count: 3304
+shape: (640, 425), count: 3134
+shape: (612, 612), count: 2393
+"""
