@@ -1,11 +1,8 @@
 # here we will count images of each type of dimension and display the most common
-from pprint import pprint
-import numpy
-from PIL import Image
-import pandas
-import os
 import glob
 from collections import Counter
+
+from PIL import Image
 
 DIR = './input/train2017/'
 
