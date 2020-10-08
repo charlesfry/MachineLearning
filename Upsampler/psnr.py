@@ -14,7 +14,7 @@ def psnr(img1:np.array, img2:np.array):
     shape = list(img1.shape)
     assert len(shape) > 0
 
-    if len(img1.shape) != 2 and len(img1.shape) != 3:
+    if len(img1.shape) not in [2,3]:
         print(f'[WARNING] input shape is of dimension {len(img1.shape)}. Did you mean to do this?')
 
     assert shape is not None, f'shape of image must be 2-dimensional. Shape: {img1.shape}'
@@ -33,7 +33,9 @@ def psnr(img1:np.array, img2:np.array):
 
     # R**2 == 255**2 == 65025
 
-    return 10 * np.log(65025 / mse)
+    R = 1 if np.max(img1) < 1 else 255
+
+    return 10 * np.log(R**2 / mse)
 
 
 if __name__ == '__main__':
@@ -41,4 +43,5 @@ if __name__ == '__main__':
     img2 = np.random.randn(64, 64,3,5)
 
     print(psnr(img1, img2))
-
+    print('\n')
+    print(psnr(img1,img1))
