@@ -16,6 +16,7 @@ for root,_,files in os.walk(test_path) :
         path = os.path.join(root,file)
         img = Image.open(path)
         if img.size != keep_size :
+            img.close()
             os.remove(path)
             continue
         # now resize and save
