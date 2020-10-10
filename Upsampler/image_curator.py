@@ -18,8 +18,12 @@ for root,_,files in os.walk(test_path) :
         if img.size != keep_size :
             os.remove(path)
             continue
-        print(os.path.splitext(path[1]))
         # now resize and save
+        filename = path.split('/')[-1]
+        newsize = (int(img.size[0] / 2), int(img.size[1] / 2))
+
+        img = img.resize(newsize)
+        img.save(f'./input/train_scale/{filename}')
 
         kept_files += 1
 
