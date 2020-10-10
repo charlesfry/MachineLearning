@@ -1,10 +1,5 @@
-import numpy as np
-import pandas as pd
-from PIL import Image
 import os
-import sys
-from pathlib import Path
-
+from PIL import Image
 
 try:
     os.makedirs('./input/train_scale/')
@@ -16,11 +11,16 @@ test_path = './input/test_scale/'
 keep_size = (640, 480)
 
 kept_files = 0
-for _,_,files in os.walk(test_path) :
-    for x in files :
-        img = Image.open(x)
-        if img.size != keep_size : continue
-        print(img.filename)
+for root,_,files in os.walk(test_path) :
+    for file in files :
+        path = os.path.join(root,file)
+        img = Image.open(path)
+        if img.size != keep_size :
+            os.remove(path)
+            continue
+        print(os.path.splitext(path[1]))
+        # now resize and save
+
         kept_files += 1
 
 print(kept_files)
