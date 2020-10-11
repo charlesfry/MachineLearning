@@ -30,11 +30,19 @@ def get_image_sizes(dir) :
     print(f"Error: no images found in directory {dir}")
     return None
 
-TRAIN_DIR = './input/train_scale'
-TEST_DIR = './input/test_scale'
+TRAIN_DIR = './input/scale_data/train_scale'
+TEST_DIR = './input/scale_data/test_scale'
 
 train_img_width,train_img_height = get_image_sizes(TRAIN_DIR)
 test_img_width,test_img_height = get_image_sizes(TEST_DIR)
 
 batch_size = 32
 
+train_ds = tf.keras.preprocessing.image_dataset_from_directory(
+    './input/scale_data/',
+    validation_split=0.2,
+    subset="training",
+    seed=seed,
+    image_size=(train_img_width,train_img_height),
+    batch_size=batch_size
+)
