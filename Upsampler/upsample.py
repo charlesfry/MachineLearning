@@ -5,6 +5,7 @@ import os
 from PIL import Image
 from pathlib import Path
 from tensorflow.keras import layers
+from tensorflow.keras.models import Sequential
 from tensorflow.keras.utils import Sequence
 import matplotlib.image as mpimg
 
@@ -33,39 +34,42 @@ def get_image_sizes(dir) :
     print(f"Error: no images found in directory {dir}")
     return None
 
-TRAIN_DIR = './input/scale_data/train/train_scale'
-LABEL_DIR = './input/scale_data/labels/labels_scale'
+TRAIN_DIR = './input/scale_data/train/butt'
+LABEL_DIR = './input/scale_data/labels/butt'
 
 train_img_width,train_img_height = get_image_sizes(TRAIN_DIR)
+train_size = (train_img_height,train_img_width)
 test_img_width,test_img_height = get_image_sizes(LABEL_DIR)
+label_size = (test_img_height,test_img_width)
 
-batch_size = 32
+
 
 # train = tf.data.Dataset.list_files(f'{TRAIN_DIR}/*.jpg')
 # labels = tf.data.Dataset.list_files(f'{LABEL_DIR}/*.jpg')
 
+
 class DataGenerator(Sequence):
 
-    def __init__(self, csv_file, base_dir,label_dir, output_size, label_size, shuffle=False, batch_size=batch_size):
+    def __init__(self, base_dir, label_dir, output_size, label_size, shuffle=False, batch_size=1):
         """
         Initializes a data generator object
-        :param csv_file: file in which image names and numeric labels are stored
         :param base_dir: the directory in which all images are stored
         :param label_dir: the directory in which the target images are stored
         :param output_size: image output size after preprocessing
         :param shuffle: shuffle the data after each epoch
         :param batch_size: The size of each batch returned by __getitem__
         """
-        self.df = pd.read_csv(csv_file)
         self.base_dir = base_dir
         self.label_dir = label_dir
         self.output_size = output_size
         self.label_size = label_size
         self.shuffle = shuffle
         self.batch_size = batch_size
-        self.on_epoch_end()
+        self.df = pd.DataFrame(data=os.listdir(base_dir))
 
         if label_dir is None : self.label_dir = base_dir
+        self.on_epoch_end()
+
 
 
     def on_epoch_end(self):
@@ -80,6 +84,7 @@ class DataGenerator(Sequence):
         ## Initializing Batch
         #  that one in the shape is just for a one channel images
         # if you use colored images set that to 3
+
         X = np.empty((self.batch_size, *self.output_size, 3))
         # (x, y, h, w)
         y = np.empty((self.batch_size, *self.label_size, 3))
@@ -97,16 +102,19 @@ class DataGenerator(Sequence):
             img = Image.open(img_path)
             label = Image.open(label_path)
 
+
+
             ## this is where you preprocess the image
             ## make sure to resize it to be self.output_size
-            img = img.resize(self.output_size)
+            if img.size != self.output_size[::-1] :
+                img = img.resize(self.output_size[::-1])
 
-            assert label.size == self.label_size, f'Assertion failed: label size must be {self.label_size}. ' \
+            assert label.size == self.label_size[::-1], f'Assertion failed: label size must be {(self.label_size[1],self.label_size[0])}. ' \
                                                   f'Label {label_path} has size {label.size}'
 
             ## if you have any preprocessing for
             ## the labels too do it here
-            
+            label = np.array(label) / 255
 
             X[i,] = img
             y[i] = label
@@ -114,25 +122,22 @@ class DataGenerator(Sequence):
         return X, y
 
 
-input_shape = (320, 240)
-
-img_gen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1./255,rotation_range=20,validation_split=.2)
-X_train = img_gen.flow_from_directory(f'./input/scale_data/train',batch_size=batch_size,
-                                           classes=None,subset='training')
-y_train = img_gen.flow_from_directory(f'./input/scale_data/labels',batch_size=batch_size,
-                                           classes=None,subset='training')
-
-image_count = len(os.listdir(f'{TRAIN_DIR}'))
+batch_size = 1
+ds_train = DataGenerator(base_dir=TRAIN_DIR,label_dir=LABEL_DIR,output_size=train_size,label_size=label_size,
+                         shuffle=False,batch_size=batch_size)
 
 
-
-
-
-
-model = tf.keras.models.Sequential([
-    layers.Conv1D(16,3,activation='relu',kernel_initializer='HeNormal'),
-    layers.UpSampling1D(size=2),
-    layers.Dense(320*240*2,activation='relu')
+model = Sequential([
+  layers.experimental.preprocessing.Rescaling(1./255, input_shape=(train_img_height, train_img_width, 3)),
+  layers.Conv2D(16, 3, padding='same', activation='relu'),
+  layers.MaxPooling2D(),
+  layers.Conv2D(32, 3, padding='same', activation='relu'),
+  layers.MaxPooling2D(),
+  layers.Conv2D(64, 3, padding='same', activation='relu'),
+  layers.MaxPooling2D(),
+  layers.Flatten(),
+  layers.Dense(128, activation='relu'),
+  # layers.Dense(label_size[0]*label_size[1]*3)
 ])
 
 model.compile(
@@ -140,4 +145,4 @@ model.compile(
     loss='mse'
 )
 
-model.fit(X_train,y_train,epochs=20,steps_per_epoch=batch_size)
+model.fit(ds_train,epochs=1,steps_per_epoch=1)
