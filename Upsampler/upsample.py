@@ -126,7 +126,7 @@ batch_size = 1
 ds_train = DataGenerator(base_dir=TRAIN_DIR,label_dir=LABEL_DIR,output_size=train_size,label_size=label_size,
                          shuffle=False,batch_size=batch_size)
 
-
+# build the model
 model = Sequential([
   layers.experimental.preprocessing.Rescaling(1./255, input_shape=(train_img_height, train_img_width, 3)),
   layers.Conv2D(16, 3, padding='same', activation='relu'),
