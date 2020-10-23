@@ -1,9 +1,6 @@
 # this model received assistance from the original Tiramisu model
 # https://github.com/0bserver07/One-Hundred-Layers-Tiramisu
 
-from  __future__ import absolute_import
-from __future__ import print_function
-
 import numpy as np
 import pickle
 
@@ -14,11 +11,11 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Layer,Dense,Dropout,\
     Activation,Flatten,Reshape,Permute
 from tensorflow.keras.layers import Conv2D,MaxPooling2D,UpSampling2D,Cropping2D
-from keras.layers.normalization import BatchNormalization
+from tensorflow.keras.layers import BatchNormalization
 
 from tensorflow.keras.layers import Conv2D,Conv2DTranspose
 
-from keras import backend as kb
+from tensorflow.keras import backend as kb
 
 import cv2
 
