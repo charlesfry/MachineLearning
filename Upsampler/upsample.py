@@ -145,4 +145,4 @@ model.compile(
     loss='mse'
 )
 
-model.fit(ds_train,epochs=1,steps_per_epoch=1)
+model.fit(ds_train,epochs=1,batch_size=1)
