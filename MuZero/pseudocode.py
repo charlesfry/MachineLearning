@@ -1,8 +1,10 @@
 import collections
 import math
-import typing
-from typing import Dict,List,Optional, NamedTuple
-
+from abc import ABC, abstractmethod
+from typing import Dict, List, Optional, NamedTuple, Callable
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras import Model
 
 ### HELPERS ###
 MAXIMUM_FLOAT_VALUE = float('inf')
@@ -315,10 +317,50 @@ class ReplayBuffer(object):
 class NetworkOutput(NamedTuple):
     value:float
     reward:float
-    policy_logits:Dict[Action, float]
-    hidden_state:List[float]
+    policy_logits: Dict[Action, float]
+    hidden_state: Optional[List[float]]
 
-class Network(object):
+    @staticmethod
+    def build_policy_logits(policy_logits):
+        return {Action(i):logit for i, logit in enumerate(policy_logits[0])}
+
+class AbstractNetwork(ABC):
+
+    def __init__(self):
+        self.training_steps = 0
+
+    @abstractmethod
+    def initial_inference(self, image) -> NetworkOutput:
+        pass
+
+    @abstractmethod
+    def recurrent_inference(self, hidden_state, action) -> NetworkOutput:
+        pass
+
+class UniformNetwork(AbstractNetwork):
+    """policy -> uniform, value -> 0, reward -> 0"""
+
+    def __init__(self, action_size: int):
+        super().__init__()
+        self.action_size = action_size
+
+    def initial_inference(self, image) -> NetworkOutput:
+        return NetworkOutput(0, 0, {Action(i): 1 / self.action_size for i in range(self.action_size)}, None)
+
+    def recurrent_inference(self, hidden_state, action) -> NetworkOutput:
+        return NetworkOutput(0, 0, {Action(i): 1 / self.action_size for i in range(self.action_size)}, None)
+
+class BaseNetwork(AbstractNetwork):
+
+    def __init__(self, representation_network: Model, value_network: Model, policy_network: Model,
+                 dynamic_network: Model, reward_network: Model):
+        super().__init__()
+        # Networks blocks
+        self.representation_network = representation_network
+        self.value_network = value_network
+        self.policy_network = policy_network
+        self.dynamic_network = dynamic_network
+        self.reward_network = reward_network
 
     def initial_inference(self, image) -> NetworkOutput:
         # representation + prediction function
@@ -336,19 +378,44 @@ class Network(object):
         # how many steps / batches the network has been trained for
         return 0
 
+    @abstractmethod
+    def _value_transform(self, value: np.array) -> float:
+        pass
+
+    @abstractmethod
+    def _reward_transform(self, reward: np.array) -> float:
+        pass
+
+    @abstractmethod
+    def _conditioned_hidden_state(self, hidden_state: np.array, action: Action) -> np.array:
+        pass
+
+    def cb_get_variables(self) -> Callable:
+        """Return a callback that return the trainable variables of the network."""
+
+        def get_variables():
+            networks = (self.representation_network, self.value_network, self.policy_network,
+                        self.dynamic_network, self.reward_network)
+            return [variables
+                    for variables_list in map(lambda n: n.weights, networks)
+                    for variables in variables_list]
+
+        return get_variables
+
+
 class SharedStorage(object):
 
     def __init__(self):
         self._networks = {}
 
-    def latest_network(self) -> Network:
+    def latest_network(self) -> BaseNetwork:
         if self._networks:
             return self._networks[max(self._networks.keys())]
         else :
             # policy -> uniform, value -> 0, reward -> 0
             return make_uniform_network()
 
-    def save_network(self, step:int, network:Network):
+    def save_network(self, step:int, network:BaseNetwork):
         self._networks[step] = network
 
 ### END OF HELPERS ###
@@ -386,7 +453,7 @@ def run_selfplay(config:MuZeroConfig, storage: SharedStorage, replay_buffer: Rep
 # each game is produced by starting at the initual board position, then
 # repeatedly executing Monte Carlo Tree Search (MCTS) to generate moves until the end
 # of the game is reached
-def play_game(config: MuZeroConfig, network: Network) -> Game :
+def play_game(config: MuZeroConfig, network: BaseNetwork) -> Game :
     game = config.new_game()
 
     while not game.terminal() and len(game.history) < config.max_moves :
@@ -400,15 +467,150 @@ def play_game(config: MuZeroConfig, network: Network) -> Game :
         game.store_search_statistics(root)
         return game
 
+# Core Monte Carlo Tree Search algorithm.
+# To decide on an action, we run N simulations, always starting at the root of
+# the search tree and traversing the tree according to the UCB formula until we
+# reach a leaf node.
+def run_mcts(config: MuZeroConfig, root: Node, action_history: ActionHistory, network: BaseNetwork):
+    min_max_stats = MinMaxStats(config.known_bounds)
+
+    for _ in range(config.num_simulations):
+        history = action_history.clone()
+        node = root
+        search_path = [node]
+
+        while node.expanded():
+            action, node = select_child(config, node, min_max_stats)
+            history.add_action(action)
+            search_path.append(node)
+
+        # Inside the search tree we use the dynamics function to obtain the next
+        # hidden state given an action and the previous hidden state
+        parent = search_path[-2]
+        network_output = network.recurrent_inference(parent.hidden_state, history.last_action())
+        expand_node(node, history.to_play(), history.action_space(), network_output)
+
+        backpropagate(search_path, network_output.value, history.to_play(), config.discount, min_max_stats)
+
+def select_action(config: MuZeroConfig, num_moves: int, node: Node, network: BaseNetwork):
+    visit_counts = [
+        (child.visit_count, action) for action, child in node.children.items()
+    ]
+
+    t = config.visit_softmax_temperature_fn(
+        num_moves=num_moves, training_steps=network.training_steps()
+    )
+
+    _, action = softmax_sample(visit_counts, t)
+    return action
+
+def select_child(config: MuZeroConfig, node: Node, min_max_stats: MinMaxStats):
+    # select child with highest USB score
+    _, action, child = max(
+        (ucb_score(config, node, child, min_max_stats), action, child) for action, child in node.children.items()
+    )
+
+    return action, child
+
+# the score for a node is based on its value plut an exploration bonus based on the prior
+def ucb_score(config: MuZeroConfig, parent: Node, child: Node, min_max_stats: MinMaxStats) -> float:
+    pb_c = math.log((parent.visit_count + config.pb_c_base + 1) / config.pb_c_base) + config.pb_c_init
+    pb_c *= math.sqrt(parent.visit_count) / (child.visit_count + 1)
+
+    prior_score = pb_c * child.prior
+    value_score = min_max_stats.normalize(child.value())
+    return prior_score + value_score
+
+# we expand a node using the value, reward, and policy prediction obtained from the neural net
+def expand_node(node: Node, to_play: Player, actions: List[Action], network_output: NetworkOutput) -> None:
+    node.to_play = to_play
+    node.hidden_state = network_output.hidden_state
+    node.reward = network_output.reward
+    policy = {a: math.exp(network_output.policy_logits[a]) for a in actions}
+    policy_sum = sum(policy.values())
+    for action, p in policy.items():
+        node.children[action] = Node(p / policy_sum)
+    return None
+
+# at the end of the simulation, propagate the evaluation all the way up the tree to the root
+def backpropagate(search_path: List[Node], value:float, to_play: Player, discount: float, min_max_stats: MinMaxStats):
+    for node in search_path:
+        node.value_sum += value if node.to_play == to_play else -value
+        node.visit_count += 1
+        min_max_stats.update(node.value())
+
+        value = node.reward + discount * value
 
 
+# At the start of each search, we add dirichlet noise to the prior of the root
+# to encourage the search to explore new actions
+def add_exploration_noise(config: MuZeroConfig, node: Node):
+    actions = list(node.children.keys())
+    noise = np.random.dirichlet([config.root_dirichlet_alpha] * len(actions))
+    frac = config.root_exploration_fraction
+    for a, n in zip(actions, noise):
+        node.children[a].prior = node.children[a].prior * (1 - frac) + n * frac
+    return
 
+######### End Self-Play ##########
+##################################
 
+##################################
+####### Part 2: Training #########
 
+def train_network(config: MuZeroConfig, storage: SharedStorage, replay_buffer: ReplayBuffer) :
+    network = BaseNetwork()
+    learning_rate = config.lr_init * config.lr_decay_rate**\
+                    (tf.compat.v1.train.get_global_step() / config.lr_decay_steps)
+    # choose the right optimizer
+    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, momentum=config.momentum)
 
+    for i in range(config.training_steps):
+        if i % config.checkpoint_interval == 0:
+            storage.save_network(i, network)
+        batch = replay_buffer.sample_batch(config.num_unroll_steps, config.td_steps)
+        update_weights(optimizer, network, batch, config.weight_decay)
+    storage.save_network(config.training_steps, network)
 
+# scale the gradient for backward pass
+def scale_gradient(tensor, scale: float):
+    return tensor * scale + tf.stop_gradient(tensor) * (1 - scale)
 
+def update_weights(optimizer: tf.keras.optimizers.Optimizer, network: BaseNetwork, batch, weight_decay: float):
+    loss = 0
+    for image, actions, targets in batch:
+        # initial step, from the real observation
+        value, reward, policy_logits, hidden_state = network.initial_inference(image)
+        predictions = [(1., value, reward, policy_logits)]
 
+        # recurrent steps, from action and previous hidden state
+        for action in actions:
+            value, reward, policy_logits, hidden_state = network.recurrent_inference(hidden_state, action)
+        predictions.append((1., len(actions), value, reward, policy_logits))
+
+        hidden_state = scale_gradient(hidden_state, 0.5)
+
+    for prediction, target in zip(predictions, targets):
+        gradient_scale, value, reward, policy_logits = prediction
+        target_value, target_reward, target_policy = target
+
+        l = (
+            scalar_loss(value, target_value) +
+            scalar_loss(reward, target_reward) +
+            tf.nn.softmax_cross_entropy_with_logits(
+                logits=policy_logits, labels=target_policy)
+        )
+
+        loss += l
+
+    for weights in network.get_weights():
+        loss += weight_decay * tf.nn.l2_loss(weights)
+
+    optimizer.minimize(loss=loss, var_list=network.cb_get_variables())
+
+def scalar_loss(prediction, target) -> float:
+    # MSE in board games, cross entropy between categorical values in Atari
+    return -1
 
 
 ######### End Training ###########
@@ -422,8 +624,8 @@ def play_game(config: MuZeroConfig, network: Network) -> Game :
 def softmax_sample(distribution, temperature: float):
     return 0, 0
 
-
 def launch_job(f, *args):
     f(*args)
+
 def make_uniform_network():
-  return Network()
+  return UniformNetwork(action_size=0)
