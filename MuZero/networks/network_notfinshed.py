@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import NamedTuple, Dict, List, Callable, Optional
 from game.game import Action
 from tensorflow.keras import Model
+
 import numpy as np
 
 class NetworkOutput(NamedTuple):
@@ -51,6 +52,10 @@ class BaseNetwork(AbstractNetwork):
         self.policy_network = policy_network
         self.dynamic_network = dynamic_network
         self.reward_network = reward_network
+
+        self.initial_model = InitialModel(self.representation_network, self.value_network, self.policy_network)
+        self.recurrent_model = RecurrentModel(self.dynamic_network, self.reward_network, self.value_network,
+                                              self.policy_network)
 
     def initial_inference(self, image) -> NetworkOutput:
         # representation + prediction function

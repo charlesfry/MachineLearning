@@ -24,9 +24,13 @@ class MinMaxStats(object) :
         self.minimum = min(self.minimum,value)
         self.maximum = max(self.maximum,value)
 
+    # if the value is unknown, set it to the default, the lowest possible value
     def normalize(self,value:float) -> float:
+
+        if value is None : return 0.
+
         if self.maximum > self.minimum :
-            # normalize only when we have set max and min vals
+            # normalize only when we have set the max and min vals
             return (value - self.minimum) / (self.maximum - self.minimum)
         return value
 

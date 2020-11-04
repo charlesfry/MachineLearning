@@ -1,13 +1,12 @@
-import os
-
-import collections
+from collections import namedtuple
 from typing import Optional, Dict
 
 import tensorflow as tf
 
 from game.game import AbstractGame
-from networks.cartpole_network import CartPoleNetwork
-from networks.network import BaseNetwork, UniformNetwork
+from networks.network_notfinshed import BaseNetwork, UniformNetwork
+
+KnownBounds = namedtuple('KnownBounds', ['min', 'max'])
 
 class MuZeroConfig(object) :
     def __init__(self,
