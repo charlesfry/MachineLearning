@@ -39,4 +39,4 @@ class CavesNode(Node):
 
     def __init__(self, reward: Union[int, float], children: Optional[Dict[str, float]] = None):
         super().__init__(reward=reward, children=children)
-        
+
