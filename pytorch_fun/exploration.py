@@ -91,3 +91,4 @@ for t in range(2000):
 y_pred = a + b * x + c * x ** 2 + d * x ** 3
 print(f'Result: y = {a.item()} + {b.item()} x + {c.item()} x^2 + {d.item()} x^3')
 print(loss:=torch.square(y_pred - y).sum().item())
+import sklearn
