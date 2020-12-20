@@ -7,6 +7,7 @@ from torch.backends import cudnn
 from torch import optim
 from torch.nn import functional as F
 from torchvision import transforms
+import matplotlib.pyplot as plt
 
 def main():
     np.random.seed(seed:=69)
@@ -49,8 +50,14 @@ def main():
     testloader = torch.utils.data.DataLoader(testset, batch_size=4, shuffle=False, num_workers=2)
     classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
+    def imshow(img):
+        img = img / 2 + 0.5  # unnormalize
+        npimg = img.numpy()
+        plt.imshow(np.transpose(npimg, (1, 2, 0)))
+        plt.show()
+
     running_loss = 0
-    for epoch in range(5):
+    for epoch in range(1):
         for i, data in enumerate(trainloader):
             inputs, labels = data
             inputs, labels = inputs.to(device), labels.to(device)
@@ -65,23 +72,21 @@ def main():
             # print stats
             running_loss += loss.item()
             steps = 2000
-            if i % steps == steps - 1:  # print every 2000 minibatches
+            if i % steps == 0 and i > 0:  # print every 2000 minibatches
                 print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / steps))
                 running_loss = 0.0
 
     print('finished training')
 
-    with torch.no_grad():
-        loss = 0
-        for data in testloader:
-            inputs, labels = data
-            inputs, labels = inputs.to(device), labels.to(device)
-
-
-
-
     PATH = 'E:\\Models\\pytorch_fun\\poggers.pt'
     torch.save(net.state_dict(), PATH)
+
+    dataiter = iter(testloader)
+    images, labels = dataiter.next()
+
+    # print images
+    imshow(torchvision.utils.make_grid(images))
+    print('ground truth: ', ' '.join('5%s' % classes[labels[j]] for j in range(4)))
 
 if __name__ == '__main__':
     main()
