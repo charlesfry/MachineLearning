@@ -17,4 +17,3 @@ def find_duplicates(arr:array):
 
     tortise = arr[0]
     hare = arr[1]
-
